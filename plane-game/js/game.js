@@ -23,7 +23,7 @@ const player = {
     speed: 3,
     bullets: [],
     lastShot: 0,
-    shootInterval: 1100,
+    shootInterval: 150,
     bulletWidth: 8,
     bulletHeight: 20,
     bulletSpeed: 8,
@@ -176,7 +176,7 @@ function updateBullets() {
 }
 
 function spawnEnemy() {
-    const size = 100;
+    const size = 50;
     const baseSpeed = 0.3;
     const speedBonus = Math.floor(score / 100) * 0.1;
     const maxBonus = 1;
@@ -189,7 +189,7 @@ function spawnEnemy() {
         speed: speed,
         health: 2,
         lastShot: 0,
-        shootInterval: 11000
+        shootInterval: 1500
     });
 }
 
@@ -272,7 +272,7 @@ function spawnBoss() {
         boss1BulletGrowth = Math.min(boss1Appearances, 5);
     } else if (isBoss2) {
         boss2Appearances++;
-        boss2IntervalReduction = Math.min(boss2Appearances * 30, 1100);
+        boss2IntervalReduction = Math.min(boss2Appearances * 30, 150);
     } else if (isBoss3) {
         boss3Appearances++;
     }
@@ -285,7 +285,7 @@ function spawnBoss() {
         bulletWidth += boss1BulletGrowth;
         bulletHeight += boss1BulletGrowth;
     } else if (isBoss2) {
-        shootInterval = Math.max(4100, 600 - boss2IntervalReduction);
+        shootInterval = Math.max(450, 600 - boss2IntervalReduction);
     } else if (isBoss3) {
         shootInterval = 800;
         boss3BulletRadius = Math.min(30 + boss3Appearances * 2, 40);
@@ -304,7 +304,7 @@ function spawnBoss() {
         shootInterval: shootInterval,
         invincible: true,
         canAttack: false,
-        targetY: isBoss3 ? 1100 : (isBoss2 ? 120 : 100),
+        targetY: isBoss3 ? 150 : (isBoss2 ? 120 : 100),
         invincibleEndTime: 0,
         bulletWidth: bulletWidth,
         bulletHeight: bulletHeight,
@@ -540,7 +540,7 @@ function drawBoss() {
     ctx.fillStyle = '#27ae60';
     const healthBarWidth = (boss.health / boss.maxHealth) * boss.radius * 2;
     ctx.fillRect(boss.x - boss.radius, boss.y - boss.radius - 15, healthBarWidth, 8);
-    ctx.strokeStyle = '#2c3e100';
+    ctx.strokeStyle = '#2c3e50';
     ctx.strokeRect(boss.x - boss.radius, boss.y - boss.radius - 15, boss.radius * 2, 8);
 }
 
@@ -684,7 +684,7 @@ function checkCollisions() {
 }
 
 function drawBackground() {
-    ctx.fillStyle = '#2c3e100';
+    ctx.fillStyle = '#2c3e50';
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
     ctx.fillStyle = '#34495e';
@@ -755,7 +755,7 @@ function startGame() {
     player.bulletWidth = 8;
     player.bulletHeight = 20;
     player.bulletSpeed = 8;
-    player.shootInterval = 1100;
+    player.shootInterval = 150;
     player.bulletRows = 1;
     isGameRunning = true;
     
