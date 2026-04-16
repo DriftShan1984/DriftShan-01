@@ -14,6 +14,7 @@ let gameLoop;
 let score = 0;
 let lives = 10;
 let isGameRunning = false;
+let isPaused = false;
 let challengeMode = false;
 let gameStartTime = 0;
 let totalDamage = 0;
@@ -165,7 +166,8 @@ const keys = {
     a: false,
     s: false,
     d: false,
-    ' ': false
+    ' ': false,
+    Escape: false
 };
 
 let mouseX = null;
@@ -183,6 +185,10 @@ canvas.addEventListener('mouseleave', () => {
 });
 
 document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && isGameRunning) {
+        togglePause();
+        return;
+    }
     if (keys.hasOwnProperty(e.key)) {
         keys[e.key] = true;
         e.preventDefault();
@@ -953,6 +959,10 @@ function drawBackground() {
 
 function game() {
     if (!isGameRunning) return;
+    if (isPaused) {
+        gameLoop = requestAnimationFrame(game);
+        return;
+    }
 
     drawBackground();
     updatePlayer();
@@ -997,6 +1007,7 @@ function game() {
 }
 
 function startGame() {
+    isPaused = false;
     challengeMode = false;
     score = 0;
     lives = 10;
@@ -1037,6 +1048,7 @@ function startGame() {
 }
 
 function startChallenge() {
+    isPaused = false;
     challengeMode = true;
     score = 0;
     lives = 10;
@@ -1103,11 +1115,31 @@ function gameOver() {
 }
 
 function returnToMain() {
+    isPaused = false;
     challengeMode = false;
     gameOverScreen.style.display = 'none';
     startScreen.style.display = 'block';
     document.getElementById('challengeInfo').style.display = 'none';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+}
+
+let pauseScreen;
+
+function togglePause() {
+    if (!isPaused) {
+        isPaused = true;
+        pauseScreen = document.createElement('div');
+        pauseScreen.className = 'pause-screen';
+        pauseScreen.innerHTML = '<h1>暂停</h1><p>按 ESC 继续</p>';
+        pauseScreen.style.cssText = 'position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:rgba(255,255,255,0.95);padding:40px;border-radius:10px;text-align:center;z-index:20;';
+        document.querySelector('.game-container').appendChild(pauseScreen);
+    } else {
+        isPaused = false;
+        if (pauseScreen) {
+            pauseScreen.remove();
+            pauseScreen = null;
+        }
+    }
 }
 
 startBtn.addEventListener('click', startGame);
