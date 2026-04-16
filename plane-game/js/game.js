@@ -139,6 +139,8 @@ const BOSS_CONFIG = {
         baseRadius: 30,
         bulletSpeedBoss3: 2,
         directionCount: 3,
+        trackBulletInterval: 400,
+        trackBulletSpeed: 2,
         rewardType: 'none',
         rewardAmount: 0
     }
@@ -321,6 +323,7 @@ function updateEnemyBullets() {
                 height: config.bulletHeight,
                 vx: 0,
                 vy: bulletSpeed,
+                color: '#e74c3c',
                 fromBoss: false
             });
             enemy.lastShot = now;
@@ -331,6 +334,11 @@ function updateEnemyBullets() {
         if (bullet.vx !== undefined) {
             bullet.x += bullet.vx;
             bullet.y += bullet.vy;
+            
+            if (bullet.tracking && bullet.targetX !== undefined) {
+                const dx = bullet.targetX - bullet.x;
+                bullet.vx = dx * 0.05;
+            }
             
             if (bullet.bouncing) {
                 const radius = bullet.radius || Math.max(bullet.width, bullet.height) / 2;
@@ -359,8 +367,8 @@ function updateEnemyBullets() {
 }
 
 function drawEnemyBullets() {
-    ctx.fillStyle = '#e74c3c';
     enemyBullets.forEach(bullet => {
+        ctx.fillStyle = bullet.color || '#e74c3c';
         if (bullet.isCircle) {
             ctx.beginPath();
             ctx.arc(bullet.x, bullet.y, bullet.radius, 0, Math.PI * 2);
@@ -446,6 +454,8 @@ function spawnBoss() {
         bulletHeight: bulletHeight,
         hasShotBoss3: false,
         lastNormalShot: 0,
+        lastTrackShot: 0,
+        playerHistory: [],
         justBecameVulnerable: false,
         dying: false,
         dyingStart: 0
@@ -510,6 +520,7 @@ function updateBoss() {
                     height: boss.bulletHeight,
                     vx: Math.cos(angle) * config.bulletSpeed,
                     vy: Math.sin(angle) * config.bulletSpeed,
+                    color: '#9b59b6',
                     bouncing: false,
                     fromBoss: true
                 });
@@ -525,6 +536,7 @@ function updateBoss() {
                     height: boss.bulletHeight * 0.75,
                     vx: Math.cos(angle) * config.innerBulletSpeed,
                     vy: Math.sin(angle) * config.innerBulletSpeed,
+                    color: '#8e44ad',
                     bouncing: false,
                     fromBoss: true
                 });
@@ -547,6 +559,7 @@ function updateBoss() {
                     height: 10,
                     vx: Math.cos(angle) * config.bulletSpeed,
                     vy: Math.sin(angle) * config.bulletSpeed,
+                    color: '#1abc9c',
                     bouncing: true,
                     bounceBottom: false,
                     fromBoss: true
@@ -563,6 +576,7 @@ function updateBoss() {
                 height: config.normalBulletHeight,
                 vx: 0,
                 vy: config.normalBulletSpeed,
+                color: '#16a085',
                 bouncing: false,
                 fromBoss: true
             });
@@ -573,6 +587,7 @@ function updateBoss() {
                 height: config.normalBulletHeight,
                 vx: 0,
                 vy: config.normalBulletSpeed,
+                color: '#16a085',
                 bouncing: false,
                 fromBoss: true
             });
@@ -600,6 +615,7 @@ function updateBoss() {
                     height: halfSize,
                     vx: Math.cos(angle) * config.bulletSpeed,
                     vy: Math.sin(angle) * config.bulletSpeed,
+                    color: '#e91e63',
                     bouncing: true,
                     bounceBottom: true,
                     fromBoss: true,
@@ -627,6 +643,7 @@ function updateBoss() {
                     height: boss.bulletHeight,
                     vx: Math.cos(angle) * config.bulletSpeed,
                     vy: Math.sin(angle) * config.bulletSpeed,
+                    color: '#9b59b6',
                     bouncing: false,
                     fromBoss: true
                 });
@@ -642,6 +659,7 @@ function updateBoss() {
                     height: boss.bulletHeight * 0.75,
                     vx: Math.cos(angle) * config.innerBulletSpeed,
                     vy: Math.sin(angle) * config.innerBulletSpeed,
+                    color: '#8e44ad',
                     bouncing: false,
                     fromBoss: true
                 });
@@ -656,6 +674,7 @@ function updateBoss() {
                     height: 10,
                     vx: Math.cos(angle) * config.bounceBulletSpeed,
                     vy: Math.sin(angle) * config.bounceBulletSpeed,
+                    color: '#1abc9c',
                     bouncing: true,
                     bounceBottom: false,
                     fromBoss: true
@@ -669,6 +688,7 @@ function updateBoss() {
                 height: config.normalBulletHeight,
                 vx: 0,
                 vy: config.normalBulletSpeed,
+                color: '#16a085',
                 bouncing: false,
                 fromBoss: true
             });
@@ -679,6 +699,7 @@ function updateBoss() {
                 height: config.normalBulletHeight,
                 vx: 0,
                 vy: config.normalBulletSpeed,
+                color: '#16a085',
                 bouncing: false,
                 fromBoss: true
             });
@@ -701,6 +722,7 @@ function updateBoss() {
                         height: config.baseRadius * 2,
                         vx: Math.cos(angle) * config.bulletSpeedBoss3,
                         vy: Math.sin(angle) * config.bulletSpeedBoss3,
+                        color: '#e91e63',
                         bouncing: true,
                         bounceBottom: true,
                         fromBoss: true,
@@ -713,6 +735,34 @@ function updateBoss() {
             }
             
             boss.lastShot = now;
+        }
+
+        if (now - boss.lastTrackShot > config.trackBulletInterval) {
+            boss.playerHistory.push({ x: player.x + player.width / 2, time: now });
+            if (boss.playerHistory.length > 0 && now - boss.playerHistory[0].time > 100) {
+                boss.playerHistory.shift();
+            }
+            
+            let targetX = boss.x;
+            if (boss.playerHistory.length > 0) {
+                targetX = boss.playerHistory[0].x;
+            }
+            
+            enemyBullets.push({
+                x: boss.x,
+                y: boss.y + boss.radius,
+                width: 8,
+                height: 16,
+                vx: 0,
+                vy: config.trackBulletSpeed,
+                targetX: targetX,
+                color: '#f1c40f',
+                bouncing: false,
+                fromBoss: true,
+                tracking: true
+            });
+            
+            boss.lastTrackShot = now;
         }
     }
 }
