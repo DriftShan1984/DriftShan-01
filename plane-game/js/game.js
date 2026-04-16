@@ -66,7 +66,7 @@ const ENEMY_CONFIG = {
 const BOSS_CONFIG = {
     boss1: {
         radius: 60,
-        baseHealth: 100,
+        baseHealth: 50,
         targetY: 100,
         invincibleTime: 2000,
         spiralBulletCount: 4,
@@ -83,7 +83,7 @@ const BOSS_CONFIG = {
     },
     boss2: {
         radius: 70,
-        baseHealth: 15,
+        baseHealth: 50,
         targetY: 120,
         invincibleTime: 2000,
         bounceBulletCount: 8,
@@ -101,7 +101,7 @@ const BOSS_CONFIG = {
     },
     boss3: {
         radius: 80,
-        baseHealth: 15,
+        baseHealth: 50,
         targetY: 150,
         invincibleTime: 2000,
         shootInterval: 800,
@@ -404,7 +404,7 @@ function spawnBoss() {
         }
     }
     
-    const health = challengeMode ? config.baseHealth : config.baseHealth * waveCount;
+    const health = challengeMode ? config.baseHealth : 50 + 10 * (waveCount - 1);
     let bulletWidth = config.baseBulletSize || 11;
     let bulletHeight = config.baseBulletSize || 11;
     let shootInterval = config.shootInterval;
