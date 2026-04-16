@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">飞机大战</string>
+    <string name="title_activity_main">飞机大战</string>
+    <string name="package_name">com.planegame.app</string>
+    <string name="custom_url_scheme">com.planegame.app</string>
+</resources>
