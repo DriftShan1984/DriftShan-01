@@ -607,7 +607,10 @@ function updateBoss() {
         }
     } else if (type === 'bossSpl') {
         boss.spiralAngle += config.spiralAngleSpeed;
-        
+        boss.x = canvas.width / 2 + Math.sin(boss.spiralAngle * 0.15) * 30;
+        if (boss.x < boss.radius) boss.x = boss.radius;
+        if (boss.x > canvas.width - boss.radius) boss.x = canvas.width - boss.radius;
+
         if (now - boss.lastShot > boss.shootInterval) {
             for (let i = 0; i < config.spiralBulletCount; i++) {
                 const angle = boss.spiralAngle + (i * Math.PI / 4);
@@ -1079,16 +1082,18 @@ function startChallenge() {
 function gameOver() {
     isGameRunning = false;
     cancelAnimationFrame(gameLoop);
-    finalScoreElement.textContent = score;
     
     if (challengeMode) {
         const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
+        const finalScore = (elapsed + totalDamage) * 10;
+        finalScoreElement.textContent = finalScore;
         document.getElementById('finalTime').textContent = elapsed;
         document.getElementById('finalDamage').textContent = totalDamage;
         document.getElementById('challengeStats').style.display = 'block';
         document.getElementById('returnBtn').style.display = 'inline-block';
         document.getElementById('restartBtn').style.display = 'none';
     } else {
+        finalScoreElement.textContent = score;
         document.getElementById('challengeStats').style.display = 'none';
         document.getElementById('returnBtn').style.display = 'none';
         document.getElementById('restartBtn').style.display = 'inline-block';
@@ -1102,6 +1107,7 @@ function returnToMain() {
     gameOverScreen.style.display = 'none';
     startScreen.style.display = 'block';
     document.getElementById('challengeInfo').style.display = 'none';
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 startBtn.addEventListener('click', startGame);
