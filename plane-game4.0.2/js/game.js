@@ -7,6 +7,7 @@ const startScreen = document.getElementById('startScreen');
 const gameOverScreen = document.getElementById('gameOverScreen');
 const startBtn = document.getElementById('startBtn');
 const challengeBtn = document.getElementById('challengeBtn');
+const bossRushBtn = document.getElementById('bossRushBtn');
 const restartBtn = document.getElementById('restartBtn');
 const returnBtn = document.getElementById('returnBtn');
 const pauseBtn = document.getElementById('pauseBtn');
@@ -17,6 +18,10 @@ let lives = 10;
 let isGameRunning = false;
 let isPaused = false;
 let challengeMode = false;
+let bossRushMode = false;
+let bossRushRound = 0;
+let bossRushTotalKills = 0;
+let bossRushWaveCount = 0;
 let gameStartTime = 0;
 let totalDamage = 0;
 let lastDamageUpdate = 0;
@@ -396,13 +401,41 @@ function drawEnemies() {
 
 function spawnBoss() {
     waveCount++;
+    if (bossRushMode) {
+        bossRushWaveCount++;
+    }
+    
     let bossTypeName;
     let config;
     
     if (challengeMode) {
-        bossTypeName = 'bossSpl';
-        config = BOSS_CONFIG.bossSpl;
-        bossStats.splAppearances++;
+        const bossType = waveCount % 3;
+        bossTypeName = bossType === 1 ? 'boss1' : (bossType === 2 ? 'boss2' : 'boss3');
+        config = BOSS_CONFIG[bossTypeName];
+        
+        if (bossTypeName === 'boss1') {
+            bossStats.boss1Appearances++;
+            bossStats.boss1BulletGrowth = Math.min(bossStats.boss1Appearances, config.maxBulletGrowth);
+        } else if (bossTypeName === 'boss2') {
+            bossStats.boss2Appearances++;
+            bossStats.boss2IntervalReduction = Math.min(bossStats.boss2Appearances * config.intervalReductionPerAppear, config.maxIntervalReduction);
+        } else if (bossTypeName === 'boss3') {
+            bossStats.boss3Appearances++;
+        }
+    } else if (bossRushMode) {
+        const bossType = bossRushWaveCount % 3;
+        bossTypeName = bossType === 1 ? 'boss1' : (bossType === 2 ? 'boss2' : 'boss3');
+        config = BOSS_CONFIG[bossTypeName];
+        
+        if (bossTypeName === 'boss1') {
+            bossStats.boss1Appearances++;
+            bossStats.boss1BulletGrowth = Math.min(bossStats.boss1Appearances, config.maxBulletGrowth);
+        } else if (bossTypeName === 'boss2') {
+            bossStats.boss2Appearances++;
+            bossStats.boss2IntervalReduction = Math.min(bossStats.boss2Appearances * config.intervalReductionPerAppear, config.maxIntervalReduction);
+        } else if (bossTypeName === 'boss3') {
+            bossStats.boss3Appearances++;
+        }
     } else {
         const bossType = waveCount % 3;
         bossTypeName = bossType === 1 ? 'boss1' : (bossType === 2 ? 'boss2' : 'boss3');
@@ -419,19 +452,22 @@ function spawnBoss() {
         }
     }
     
-    const health = challengeMode ? config.baseHealth : 50 + 10 * (waveCount - 1);
+    const health = challengeMode ? config.baseHealth : (bossRushMode ? 50 + 10 * bossRushTotalKills : 50 + 10 * (waveCount - 1));
     let bulletWidth = config.baseBulletSize || 11;
     let bulletHeight = config.baseBulletSize || 11;
     let shootInterval = config.shootInterval;
     
     if (!challengeMode) {
         if (bossTypeName === 'boss1') {
-            bulletWidth += bossStats.boss1BulletGrowth;
-            bulletHeight += bossStats.boss1BulletGrowth;
+            const maxBulletGrowth = bossRushMode ? 8 : config.maxBulletGrowth;
+            bulletWidth += Math.min(bossStats.boss1BulletGrowth, maxBulletGrowth);
+            bulletHeight += Math.min(bossStats.boss1BulletGrowth, maxBulletGrowth);
         } else if (bossTypeName === 'boss2') {
-            shootInterval = Math.max(450, config.shootInterval - bossStats.boss2IntervalReduction);
+            const maxIntervalReduction = bossRushMode ? 240 : config.maxIntervalReduction;
+            shootInterval = Math.max(450, config.shootInterval - Math.min(bossStats.boss2IntervalReduction, maxIntervalReduction));
         } else if (bossTypeName === 'boss3') {
-            bossStats.boss3BulletRadius = Math.min(config.baseRadius + bossStats.boss3Appearances * config.radiusGrowthPerAppear, config.baseRadius + config.maxRadiusGrowth);
+            const maxRadiusGrowth = bossRushMode ? 16 : config.maxRadiusGrowth;
+            bossStats.boss3BulletRadius = Math.min(config.baseRadius + bossStats.boss3Appearances * config.radiusGrowthPerAppear, config.baseRadius + maxRadiusGrowth);
         }
     }
     
@@ -468,7 +504,7 @@ function updateBoss() {
     
     if (boss.dying) {
         const blinkDuration = 400;
-        const bulletClearDelay = 1000;
+        const bulletClearDelay = bossRushMode ? 2000 : 1000;
         if (Date.now() - boss.dyingStart >= blinkDuration + bulletClearDelay) {
             enemyBullets = enemyBullets.filter(bullet => !bullet.fromBoss);
             bossDeathTime = Date.now();
@@ -486,6 +522,15 @@ function updateBoss() {
         if (challengeMode) {
             boss.invincible = false;
             boss.justBecameVulnerable = true;
+        } else if (bossRushMode) {
+            if (enemies.length === 0 && !boss.canAttack) {
+                boss.canAttack = true;
+                boss.invincibleEndTime = Date.now() + boss.invincibleDuration;
+            }
+            if (boss.canAttack && Date.now() >= boss.invincibleEndTime) {
+                boss.invincible = false;
+                boss.justBecameVulnerable = true;
+            }
         } else {
             if (enemies.length === 0 && !boss.canAttack) {
                 boss.canAttack = true;
@@ -887,23 +932,28 @@ function applyBossRewards(bossType) {
 
 function checkCollisions() {
     player.bullets.forEach((bullet, bulletIndex) => {
-        if (boss && !boss.invincible && !boss.dying) {
-            const dx = bullet.x + bullet.hitboxWidth / 2 - boss.x;
-            const dy = bullet.y + bullet.hitboxHeight / 2 - boss.y;
-            const dist = Math.sqrt(dx * dx + dy * dy);
-            if (dist < boss.radius + bullet.hitboxWidth / 2) {
-                boss.health--;
-                if (challengeMode) totalDamage++;
-                player.bullets.splice(bulletIndex, 1);
-                if (boss.health <= 0) {
-                    lives += 5;
-                    livesElement.textContent = lives;
-                    applyBossRewards(boss.type);
-                    boss.dying = true;
-                    boss.dyingStart = Date.now();
+                if (boss && !boss.invincible && !boss.dying) {
+                    const dx = bullet.x + bullet.hitboxWidth / 2 - boss.x;
+                    const dy = bullet.y + bullet.hitboxHeight / 2 - boss.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    if (dist < boss.radius + bullet.hitboxWidth / 2) {
+                        boss.health--;
+                        if (challengeMode) totalDamage++;
+                        player.bullets.splice(bulletIndex, 1);
+                        if (boss.health <= 0 && !boss.dying) {
+                            boss.dying = true;
+                            boss.dyingStart = Date.now();
+                            if (bossRushMode) {
+                                onBossRushBossDefeated();
+                                updateBossRushDisplay();
+                            } else {
+                                lives += 5;
+                                livesElement.textContent = lives;
+                                applyBossRewards(boss.type);
+                            }
+                        }
+                    }
                 }
-            }
-        }
         
         enemies.forEach((enemy, enemyIndex) => {
             if (bullet.x < enemy.x + enemy.width &&
@@ -934,6 +984,9 @@ function checkCollisions() {
             enemies.splice(index, 1);
             lives--;
             livesElement.textContent = lives;
+            if (bossRushMode) {
+                document.getElementById('bossRushLives').textContent = lives;
+            }
 
             if (lives <= 0) {
                 gameOver();
@@ -971,6 +1024,9 @@ function checkCollisions() {
             }
             lives--;
             livesElement.textContent = lives;
+            if (bossRushMode) {
+                document.getElementById('bossRushLives').textContent = lives;
+            }
 
             if (lives <= 0) {
                 gameOver();
@@ -989,6 +1045,9 @@ function checkCollisions() {
         if (dist < boss.radius + player.hitboxWidth) {
             lives--;
             livesElement.textContent = lives;
+            if (bossRushMode) {
+                document.getElementById('bossRushLives').textContent = lives;
+            }
             if (lives <= 0) {
                 gameOver();
             }
@@ -1024,7 +1083,7 @@ function game() {
     drawEnemyBullets();
     updateBoss();
     drawBoss();
-    if (!challengeMode) {
+    if (!challengeMode && !bossRushMode) {
         updateEnemies();
         drawEnemies();
     }
@@ -1037,12 +1096,18 @@ function game() {
     }
 
     const now = Date.now();
-    if (!boss && score >= bossStats.bossSpawnScore) {
+    if (!boss && !bossRushMode && score >= bossStats.bossSpawnScore) {
         spawnBoss();
         bossStats.bossSpawnScore += challengeMode ? 0 : 100;
     }
     
-    if (!challengeMode) {
+    if (bossRushMode && !boss && bossDeathTime > 0 && now - bossDeathTime > 2000) {
+        enemyBullets = enemyBullets.filter(bullet => !bullet.fromBoss);
+        spawnBoss();
+        updateBossRushDisplay();
+    }
+    
+    if (!challengeMode && !bossRushMode) {
         const canSpawnEnemies = !boss && (bossDeathTime === 0 || now - bossDeathTime > 3000);
         if (canSpawnEnemies && now - lastEnemySpawn > enemySpawnInterval) {
             spawnEnemy();
@@ -1102,6 +1167,7 @@ function startGame() {
 function startChallenge() {
     isPaused = false;
     challengeMode = true;
+    bossRushMode = false;
     score = 0;
     lives = 10;
     bossStats = {
@@ -1138,17 +1204,101 @@ function startChallenge() {
     document.getElementById('challengeInfo').style.display = 'block';
     document.getElementById('challengeStats').style.display = 'none';
     document.getElementById('returnBtn').style.display = 'none';
+    document.getElementById('bossRushInfo').style.display = 'none';
     pauseBtn.style.display = 'block';
     
     spawnBoss();
     game();
 }
 
+function startBossRush() {
+    isPaused = false;
+    challengeMode = false;
+    bossRushMode = true;
+    score = 0;
+    lives = 5;
+    bossRushRound = 0;
+    bossRushTotalKills = 0;
+    bossRushWaveCount = 0;
+    waveCount = 0;
+    bossStats = {
+        boss1Appearances: 0,
+        boss2Appearances: 0,
+        boss2Kills: 0,
+        boss3Appearances: 0,
+        splAppearances: 0,
+        boss1BulletGrowth: 0,
+        boss2IntervalReduction: 0,
+        boss3BulletRadius: 30,
+        playerSpeedBoost: 0,
+        bossSpawnScore: 0
+    };
+    scoreElement.textContent = score;
+    livesElement.textContent = lives;
+    player.bullets = [];
+    enemies = [];
+    enemyBullets = [];
+    boss = null;
+    bossDeathTime = 0;
+    player.x = canvas.width / 2 - 20;
+    player.y = canvas.height - 60;
+    player.bulletWidth = 6;
+    player.bulletHeight = 12;
+    player.bulletSpeed = 8;
+    player.shootInterval = 200;
+    player.bulletRows = 1;
+    isGameRunning = true;
+    
+    startScreen.style.display = 'none';
+    gameOverScreen.style.display = 'none';
+    document.getElementById('challengeInfo').style.display = 'none';
+    document.getElementById('bossRushInfo').style.display = 'block';
+    document.getElementById('bossRushCount').textContent = '1/24';
+    document.getElementById('bossRushLives').textContent = lives;
+    pauseBtn.style.display = 'block';
+    
+    spawnBoss();
+    game();
+}
+
+function onBossRushBossDefeated() {
+    bossRushTotalKills++;
+    
+    lives = Math.min(lives + 3, 20);
+    livesElement.textContent = lives;
+    document.getElementById('bossRushLives').textContent = lives;
+    applyBossRewards(boss.type);
+    
+    boss.dying = true;
+    boss.dyingStart = Date.now();
+    
+    if (bossRushTotalKills >= 24) {
+        setTimeout(() => {
+            gameOver();
+        }, 500);
+    }
+}
+
+function updateBossRushDisplay() {
+    const progress = Math.min(bossRushTotalKills + 1, 24);
+    document.getElementById('bossRushCount').textContent = progress + '/24';
+    const currentWave = Math.min(Math.floor(bossRushTotalKills / 3) + 1, 8);
+    return currentWave;
+}
+
 function gameOver() {
     isGameRunning = false;
     cancelAnimationFrame(gameLoop);
     
-    if (challengeMode) {
+    if (bossRushMode) {
+        const passedWaves = Math.min(Math.floor(bossRushTotalKills / 3), 8);
+        finalScoreElement.textContent = `击败 ${bossRushTotalKills} 个 BOSS | 通关波数：${passedWaves}/8`;
+        document.getElementById('finalRounds').textContent = passedWaves;
+        document.getElementById('bossRushStats').style.display = 'block';
+        document.getElementById('challengeStats').style.display = 'none';
+        document.getElementById('returnBtn').style.display = 'inline-block';
+        document.getElementById('restartBtn').style.display = 'none';
+    } else if (challengeMode) {
         const elapsed = Math.floor((Date.now() - gameStartTime) / 1000);
         const finalScore = (elapsed + totalDamage) * 10;
         finalScoreElement.textContent = finalScore;
@@ -1172,6 +1322,7 @@ function returnToMain() {
     isPaused = false;
     isGameRunning = false;
     challengeMode = false;
+    bossRushMode = false;
     cancelAnimationFrame(gameLoop);
     if (pauseScreen) {
         pauseScreen.remove();
@@ -1180,6 +1331,8 @@ function returnToMain() {
     gameOverScreen.style.display = 'none';
     startScreen.style.display = 'block';
     document.getElementById('challengeInfo').style.display = 'none';
+    document.getElementById('bossRushInfo').style.display = 'none';
+    document.getElementById('bossRushStats').style.display = 'none';
     pauseBtn.style.display = 'none';
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
@@ -1206,7 +1359,13 @@ function togglePause() {
                 pauseScreen.remove();
                 pauseScreen = null;
             }
-            startGame();
+            if (bossRushMode) {
+                startBossRush();
+            } else if (challengeMode) {
+                startChallenge();
+            } else {
+                startGame();
+            }
         });
     } else {
         isPaused = false;
@@ -1219,6 +1378,7 @@ function togglePause() {
 
 startBtn.addEventListener('click', startGame);
 challengeBtn.addEventListener('click', startChallenge);
+bossRushBtn.addEventListener('click', startBossRush);
 restartBtn.addEventListener('click', startGame);
 returnBtn.addEventListener('click', returnToMain);
 pauseBtn.addEventListener('click', togglePause);

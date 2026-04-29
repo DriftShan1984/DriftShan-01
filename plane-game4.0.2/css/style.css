@@ -118,6 +118,40 @@ body {
     background: #2980b9;
 }
 
+#bossRushBtn {
+    background: #9b59b6 !important;
+}
+
+#bossRushBtn:hover {
+    background: #8e44ad !important;
+}
+
+#bossRushInfo {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 20px;
+    background: #9b59b6;
+    color: #fff;
+    border-radius: 5px;
+    margin-bottom: 10px;
+}
+
+.boss-rush-screen {
+    display: none;
+}
+
+#bossRushStats {
+    font-size: 18px;
+    font-weight: bold;
+    color: #9b59b6;
+    margin-top: 15px;
+}
+
+#bossRushInfo span {
+    font-size: 16px;
+    font-weight: bold;
+}
+
 .game-over-screen {
     display: none;
 }

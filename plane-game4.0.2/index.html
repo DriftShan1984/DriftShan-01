@@ -17,12 +17,25 @@
             <span>时间：<span id="timer">0</span>s</span>
             <span>伤害：<span id="damage">0</span></span>
         </div>
+        <div id="bossRushInfo" style="display: none;">
+            <span>BOSS: <span id="bossRushCount">1/24</span></span>
+            <span>剩余生命：<span id="bossRushLives">5</span></span>
+        </div>
         <canvas id="gameCanvas" width="400" height="600"></canvas>
         <div class="start-screen" id="startScreen">
             <h1>飞机大战</h1>
             <p>使用方向键、WASD 或鼠标移动</p>
             <button id="startBtn">开始游戏</button>
             <button id="challengeBtn" style="margin-top: 10px;">挑战</button>
+            <button id="bossRushBtn" style="margin-top: 10px; background: #9b59b6;">BossRush</button>
+        </div>
+        <div class="game-over-screen" id="gameOverScreen">
+            <h1>游戏结束</h1>
+            <p>最终得分：<span id="finalScore">0</span></p>
+            <p id="challengeStats" style="display: none;">存活时间：<span id="finalTime">0</span>s | 造成伤害：<span id="finalDamage">0</span></p>
+            <p id="bossRushStats" style="display: none;">通关波数：<span id="finalRounds">0</span>/8</p>
+            <button id="restartBtn">重新开始</button>
+            <button id="returnBtn" style="margin-top: 10px; display: none;">返回主页</button>
         </div>
         <div class="game-over-screen" id="gameOverScreen">
             <h1>游戏结束</h1>
